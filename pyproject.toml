@@ -1,0 +1,19 @@
+[project]
+name = "txt2epub"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "ASUSWA", email = "39334034+ASUSWA@users.noreply.github.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "ebooklib>=0.20",
+]
+
+[project.scripts]
+txt2epub = "txt2epub:main"
+
+[build-system]
+requires = ["uv_build>=0.12.22,<0.13.0"]
+build-backend = "uv_build"
