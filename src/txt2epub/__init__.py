@@ -11,6 +11,7 @@ Usage:
 The regex is matched against each line (after stripping whitespace).
 Any line that matches becomes a chapter title and starts a new chapter.
 """
+
 import argparse
 import html
 import re
@@ -67,8 +68,8 @@ def split_chapters(text: str, pattern: str):
 def detect_language(text: str) -> str:
     """Guess a language code from character counts; only meant as a default."""
     sample = text[:100_000]  # a prefix is plenty for detection
-    cjk = len(re.findall(r"[\u4e00-\u9fff]", sample))     # Han ideographs
-    kana = len(re.findall(r"[\u3040-\u30ff]", sample))    # Hiragana + Katakana
+    cjk = len(re.findall(r"[\u4e00-\u9fff]", sample))  # Han ideographs
+    kana = len(re.findall(r"[\u3040-\u30ff]", sample))  # Hiragana + Katakana
     hangul = len(re.findall(r"[\uac00-\ud7af]", sample))
     latin = len(re.findall(r"[A-Za-z]", sample))
 
@@ -111,10 +112,7 @@ def build_epub(chapters, out_path, book_title, author, lang, cover=None):
     if cover is not None:
         cover_name, cover_bytes = cover
         book.set_cover(cover_name, cover_bytes)
-        cover_page = next(
-            item for item in book.get_items()
-            if isinstance(item, epub.EpubCoverHtml)
-        )
+        cover_page = next(item for item in book.get_items() if isinstance(item, epub.EpubCoverHtml))
 
     items = []
     for i, (title, paras) in enumerate(chapters, start=1):
@@ -129,7 +127,7 @@ def build_epub(chapters, out_path, book_title, author, lang, cover=None):
         book.add_item(item)
         items.append(item)
 
-    book.toc = tuple(items)          # table of contents built from regex titles
+    book.toc = tuple(items)  # table of contents built from regex titles
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())
     book.spine = ([cover_page] if cover_page else []) + ["nav"] + items
