@@ -15,7 +15,7 @@ uv sync          # or: python3 -m venv .venv && pip install ebooklib
 
 ```sh
 txt2epub book.txt                              # auto title, auto language
-txt2epub book.txt -o out.epub -t "书名" -a "作者"
+txt2epub book.txt -o out.epub -t "Title" -a "Author"
 txt2epub book.txt -p '^Part\s+[IVX]+.*$'       # custom chapter regex
 txt2epub book.txt -c cover.jpg -l zh              # embed cover, force language
 txt2epub book.txt --indent 2 --keep-blank-lines   # CJK indent, scene breaks
