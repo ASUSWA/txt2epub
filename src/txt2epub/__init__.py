@@ -145,7 +145,9 @@ class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
         return super()._get_help_string(action)
 
 
-def build_epub(chapters, out_path, book_title, author, lang, cover=None, indent=0, identifier=None):
+def build_epub(
+    chapters, out_path, book_title, author, lang, cover=None, indent=0, identifier=None
+):
     book = epub.EpubBook()
     book.set_identifier(identifier or build_identifier(book_title, author))
     book.set_title(book_title)
@@ -166,11 +168,15 @@ def build_epub(chapters, out_path, book_title, author, lang, cover=None, indent=
     if cover is not None:
         cover_name, cover_bytes = cover
         book.set_cover(cover_name, cover_bytes)
-        cover_page = next(item for item in book.get_items() if isinstance(item, epub.EpubCoverHtml))
+        cover_page = next(
+            item for item in book.get_items() if isinstance(item, epub.EpubCoverHtml)
+        )
 
     items = []
     for i, (title, paras) in enumerate(chapters, start=1):
-        parts = [SCENE_BREAK if p is None else f"<p>{html.escape(p)}</p>" for p in paras]
+        parts = [
+            SCENE_BREAK if p is None else f"<p>{html.escape(p)}</p>" for p in paras
+        ]
         body = "\n".join(parts)
         item = epub.EpubHtml(
             title=title,
@@ -197,12 +203,20 @@ def main():
         formatter_class=_HelpFormatter,
     )
     ap.add_argument("input", type=Path, help="input .txt file")
-    ap.add_argument("-o", "--output", type=Path, help="output .epub (default: same name)")
-    ap.add_argument("-p", "--pattern", default=DEFAULT_PATTERN, help="chapter title regex")
+    ap.add_argument(
+        "-o", "--output", type=Path, help="output .epub (default: same name)"
+    )
+    ap.add_argument(
+        "-p", "--pattern", default=DEFAULT_PATTERN, help="chapter title regex"
+    )
     ap.add_argument("-t", "--title", help="book title (default: file name)")
     ap.add_argument("-a", "--author", default="Unknown", help="author name")
-    ap.add_argument("-l", "--lang", help="language code, e.g. en, zh, ja (default: auto-detect)")
-    ap.add_argument("-c", "--cover", type=Path, help="cover image (jpg/png/gif/webp/svg)")
+    ap.add_argument(
+        "-l", "--lang", help="language code, e.g. en, zh, ja (default: auto-detect)"
+    )
+    ap.add_argument(
+        "-c", "--cover", type=Path, help="cover image (jpg/png/gif/webp/svg)"
+    )
     ap.add_argument(
         "--identifier",
         help="book identifier, e.g. urn:uuid:... or urn:isbn:... "
@@ -253,7 +267,9 @@ def main():
         except ValueError as e:
             sys.exit(f"Error: {e}")
 
-    chapters = split_chapters(text, args.pattern, keep_blank_lines=args.keep_blank_lines)
+    chapters = split_chapters(
+        text, args.pattern, keep_blank_lines=args.keep_blank_lines
+    )
     build_epub(
         chapters,
         out,
