@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Thin wrapper so `python main.py` works even without the package installed."""
+
 
 import sys
 from pathlib import Path
