@@ -7,9 +7,12 @@ Usage:
     txt2epub book.txt -o out.epub -t "My Book" -a "Author Name"
     txt2epub book.txt -p '^Part\s+[IVX]+.*$'
     txt2epub book.txt --cover cover.jpg -l zh
+    txt2epub book.txt --indent 2 --keep-blank-lines
 
 The regex is matched against each line (after stripping whitespace).
 Any line that matches becomes a chapter title and starts a new chapter.
+Blank lines between paragraphs are dropped by default; with
+--keep-blank-lines each run of them is rendered as a scene-break separator.
 """
 
 import argparse
@@ -26,10 +29,14 @@ DEFAULT_PATTERN = r"^第.{1,25}[章节回].*$"
 
 COVER_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
 
-CSS = """
-body { font-family: serif; line-height: 1.6; margin: 5%; }
-h1 { text-align: center; margin: 2em 0 1em; }
-p { text-indent: 2em; margin: 0 0 0.6em; }
+
+def build_css(indent: float) -> str:
+    """Build the stylesheet; indent is the paragraph first-line indent in em."""
+    return f"""
+body {{ font-family: serif; line-height: 1.6; margin: 5%; }}
+h1 {{ text-align: center; margin: 2em 0 1em; }}
+p {{ text-indent: {indent:g}em; margin: 0 0 0.6em; }}
+p.scene-break {{ text-indent: 0; text-align: center; margin: 1em 0; }}
 """
 
 
@@ -43,24 +50,41 @@ def read_text(path: Path) -> str:
     raise ValueError("Could not decode file")
 
 
-def split_chapters(text: str, pattern: str):
-    """Return a list of (title, [paragraph, ...]) tuples."""
+def split_chapters(text: str, pattern: str, keep_blank_lines: bool = False):
+    """Return a list of (title, [paragraph, ...]) tuples.
+
+    Paragraphs are strings. When keep_blank_lines is True, each run of blank
+    lines between paragraphs becomes a single None entry marking a scene
+    break; runs at chapter boundaries are discarded.
+    """
     regex = re.compile(pattern)
     chapters = []
     title, paras = "Front Matter", []
 
+    def has_content(items):
+        return any(p is not None for p in items)
+
+    def trim_trailing_breaks(items):
+        while items and items[-1] is None:
+            items.pop()
+
     for raw in text.splitlines():
         line = raw.strip()
         if not line:
+            # Collapse a run of blank lines into one scene break between paragraphs
+            if keep_blank_lines and paras and paras[-1] is not None:
+                paras.append(None)
             continue
         if regex.match(line):
             # Save the previous chapter (skip empty front matter)
-            if paras or chapters:
+            trim_trailing_breaks(paras)
+            if has_content(paras) or chapters:
                 chapters.append((title, paras))
             title, paras = line, []
         else:
             paras.append(line)
 
+    trim_trailing_breaks(paras)
     chapters.append((title, paras))
     return chapters
 
@@ -91,7 +115,10 @@ def load_cover(path: Path):
     return f"cover{suffix}", path.read_bytes()
 
 
-def build_epub(chapters, out_path, book_title, author, lang, cover=None):
+SCENE_BREAK = '<p class="scene-break">* * *</p>'
+
+
+def build_epub(chapters, out_path, book_title, author, lang, cover=None, indent=0):
     book = epub.EpubBook()
     book.set_identifier(f"txt2epub-{abs(hash(book_title))}")
     book.set_title(book_title)
@@ -102,7 +129,7 @@ def build_epub(chapters, out_path, book_title, author, lang, cover=None):
         uid="style",
         file_name="style/main.css",
         media_type="text/css",
-        content=CSS,
+        content=build_css(indent),
     )
     book.add_item(css)
 
@@ -116,7 +143,8 @@ def build_epub(chapters, out_path, book_title, author, lang, cover=None):
 
     items = []
     for i, (title, paras) in enumerate(chapters, start=1):
-        body = "\n".join(f"<p>{html.escape(p)}</p>" for p in paras)
+        parts = [SCENE_BREAK if p is None else f"<p>{html.escape(p)}</p>" for p in paras]
+        body = "\n".join(parts)
         item = epub.EpubHtml(
             title=title,
             file_name=f"chap_{i:04d}.xhtml",
@@ -144,12 +172,26 @@ def main():
     ap.add_argument("-a", "--author", default="Unknown", help="author name")
     ap.add_argument("-l", "--lang", help="language code, e.g. en, zh, ja (default: auto-detect)")
     ap.add_argument("-c", "--cover", type=Path, help="cover image (jpg/png/gif/webp/svg)")
+    ap.add_argument(
+        "--keep-blank-lines",
+        action="store_true",
+        help="keep blank lines between paragraphs as scene-break separators (default: drop them)",
+    )
+    ap.add_argument(
+        "--indent",
+        type=float,
+        default=0,
+        metavar="EM",
+        help="paragraph first-line indent in em (default: 0; use 2 for classic CJK style)",
+    )
     args = ap.parse_args()
 
     if not args.input.exists():
         sys.exit(f"File not found: {args.input}")
     if args.cover and not args.cover.is_file():
         sys.exit(f"Cover not found: {args.cover}")
+    if args.indent < 0:
+        sys.exit("--indent must be >= 0")
 
     out = args.output or args.input.with_suffix(".epub")
     title = args.title or args.input.stem
@@ -164,13 +206,18 @@ def main():
         except ValueError as e:
             sys.exit(f"Error: {e}")
 
-    chapters = split_chapters(text, args.pattern)
-    build_epub(chapters, out, title, args.author, lang, cover)
+    chapters = split_chapters(text, args.pattern, keep_blank_lines=args.keep_blank_lines)
+    build_epub(chapters, out, title, args.author, lang, cover, indent=args.indent)
 
-    suffix = f", language: {lang}, cover: {args.cover.name}" if cover else f", language: {lang}"
-    print(f"Wrote {out}{suffix} with {len(chapters)} sections:")
+    extras = [f"language: {lang}"]
+    if cover:
+        extras.append(f"cover: {args.cover.name}")
+    if args.keep_blank_lines:
+        extras.append("blank lines kept as separators")
+    print(f"Wrote {out} ({', '.join(extras)}) with {len(chapters)} sections:")
     for t, p in chapters[:10]:
-        print(f"  - {t}  ({len(p)} paragraphs)")
+        count = sum(1 for x in p if x is not None)
+        print(f"  - {t}  ({count} paragraphs)")
     if len(chapters) > 10:
         print(f"  ... and {len(chapters) - 10} more")
 

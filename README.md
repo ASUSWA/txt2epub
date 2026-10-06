@@ -17,8 +17,9 @@ uv sync          # or: python3 -m venv .venv && pip install ebooklib
 txt2epub book.txt                              # auto title, auto language
 txt2epub book.txt -o out.epub -t "书名" -a "作者"
 txt2epub book.txt -p '^Part\s+[IVX]+.*$'       # custom chapter regex
-txt2epub book.txt -c cover.jpg -l zh           # embed cover, force language
-python main.py book.txt                        # same, without installing
+txt2epub book.txt -c cover.jpg -l zh              # embed cover, force language
+txt2epub book.txt --indent 2 --keep-blank-lines   # CJK indent, scene breaks
+python main.py book.txt                         # same, without installing
 ```
 
 ## Options
@@ -31,6 +32,8 @@ python main.py book.txt                        # same, without installing
 | `-p, --pattern` | Chapter title regex, matched per line (default: `^第.{1,25}[章节回].*$`) |
 | `-l, --lang` | Language code, e.g. `en`, `zh`, `ja` (default: auto-detect) |
 | `-c, --cover` | Cover image: jpg / png / gif / webp / svg |
+| `--keep-blank-lines` | Render runs of blank lines between paragraphs as scene-break separators (`* * *`) instead of dropping them |
+| `--indent EM` | Paragraph first-line indent in `em` (default: `0`, no indent; `2` for classic CJK style) |
 
 ## Notes
 
