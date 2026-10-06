@@ -19,7 +19,8 @@ from pathlib import Path
 
 from ebooklib import epub
 
-# Matches: "Chapter 1", "Chapter 12: Title", "CHAPTER ONE", "Chapter IV - Title"
+# Matches Chinese chapter headings: "第一章", "第12章 标题", "第一百二十回"
+# (any 1-25 chars between 第 and 章/节/回, e.g. the numeral and title)
 DEFAULT_PATTERN = r"^第.{1,25}[章节回].*$"
 
 COVER_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
