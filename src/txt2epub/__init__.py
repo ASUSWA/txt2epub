@@ -136,6 +136,15 @@ def build_identifier(book_title: str, author: str) -> str:
 SCENE_BREAK = '<p class="scene-break">* * *</p>'
 
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    """Show defaults, but skip None (the help text explains the derived value)."""
+
+    def _get_help_string(self, action):
+        if action.default is None:
+            return action.help
+        return super()._get_help_string(action)
+
+
 def build_epub(chapters, out_path, book_title, author, lang, cover=None, indent=0, identifier=None):
     book = epub.EpubBook()
     book.set_identifier(identifier or build_identifier(book_title, author))
@@ -182,7 +191,11 @@ def build_epub(chapters, out_path, book_title, author, lang, cover=None, indent=
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Convert TXT to EPUB using a chapter regex.")
+    ap = argparse.ArgumentParser(
+        prog="txt2epub",
+        description="Convert TXT to EPUB using a chapter regex.",
+        formatter_class=_HelpFormatter,
+    )
     ap.add_argument("input", type=Path, help="input .txt file")
     ap.add_argument("-o", "--output", type=Path, help="output .epub (default: same name)")
     ap.add_argument("-p", "--pattern", default=DEFAULT_PATTERN, help="chapter title regex")
@@ -202,15 +215,19 @@ def main():
     ap.add_argument(
         "--keep-blank-lines",
         action="store_true",
-        help="keep blank lines between paragraphs as scene-break separators (default: drop them)",
+        help="keep blank lines between paragraphs as scene-break separators "
+        "(blank lines are dropped without this flag)",
     )
     ap.add_argument(
         "--indent",
         type=float,
         default=0,
         metavar="EM",
-        help="paragraph first-line indent in em (default: 0; use 2 for classic CJK style)",
+        help="paragraph first-line indent in em (2 for classic CJK style)",
     )
+    if len(sys.argv) == 1:
+        ap.print_help()
+        return 1
     args = ap.parse_args()
 
     if not args.input.exists():
@@ -262,4 +279,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
