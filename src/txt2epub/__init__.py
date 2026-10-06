@@ -19,6 +19,7 @@ import argparse
 import html
 import re
 import sys
+import uuid
 from pathlib import Path
 
 from ebooklib import epub
@@ -40,8 +41,15 @@ p.scene-break {{ text-indent: 0; text-align: center; margin: 1em 0; }}
 """
 
 
-def read_text(path: Path) -> str:
-    """Try common encodings so non-UTF-8 files still load."""
+def read_text(path: Path, encoding: str | None = None) -> str:
+    """Read the file; forced encoding or a decode-attempt chain for legacy files."""
+    if encoding:
+        try:
+            return path.read_text(encoding=encoding)
+        except LookupError as e:
+            raise ValueError(f"unknown encoding {encoding!r}") from e
+        except UnicodeDecodeError as e:
+            raise ValueError(f"file does not decode as {encoding!r}: {e}") from e
     for enc in ("utf-8-sig", "utf-8", "gb18030", "big5", "latin-1"):
         try:
             return path.read_text(encoding=enc)
@@ -115,12 +123,22 @@ def load_cover(path: Path):
     return f"cover{suffix}", path.read_bytes()
 
 
+def build_identifier(book_title: str, author: str) -> str:
+    """Deterministic identifier: same title and author always map to the same UUID.
+
+    Readers key reading progress and annotations to this value, so a
+    re-conversion of the same book must not change it.
+    """
+    name = f"txt2epub:{book_title}|{author}"
+    return f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, name)}"
+
+
 SCENE_BREAK = '<p class="scene-break">* * *</p>'
 
 
-def build_epub(chapters, out_path, book_title, author, lang, cover=None, indent=0):
+def build_epub(chapters, out_path, book_title, author, lang, cover=None, indent=0, identifier=None):
     book = epub.EpubBook()
-    book.set_identifier(f"txt2epub-{abs(hash(book_title))}")
+    book.set_identifier(identifier or build_identifier(book_title, author))
     book.set_title(book_title)
     book.set_language(lang)
     book.add_author(author)
@@ -173,6 +191,15 @@ def main():
     ap.add_argument("-l", "--lang", help="language code, e.g. en, zh, ja (default: auto-detect)")
     ap.add_argument("-c", "--cover", type=Path, help="cover image (jpg/png/gif/webp/svg)")
     ap.add_argument(
+        "--identifier",
+        help="book identifier, e.g. urn:uuid:... or urn:isbn:... "
+        "(default: deterministic UUID derived from title and author)",
+    )
+    ap.add_argument(
+        "--encoding",
+        help="force input encoding, e.g. utf-8, gb18030, big5 (default: auto-detect)",
+    )
+    ap.add_argument(
         "--keep-blank-lines",
         action="store_true",
         help="keep blank lines between paragraphs as scene-break separators (default: drop them)",
@@ -196,7 +223,10 @@ def main():
     out = args.output or args.input.with_suffix(".epub")
     title = args.title or args.input.stem
 
-    text = read_text(args.input)
+    try:
+        text = read_text(args.input, args.encoding)
+    except ValueError as e:
+        sys.exit(f"Error: {e}")
     lang = args.lang or detect_language(text)
 
     cover = None
@@ -207,7 +237,16 @@ def main():
             sys.exit(f"Error: {e}")
 
     chapters = split_chapters(text, args.pattern, keep_blank_lines=args.keep_blank_lines)
-    build_epub(chapters, out, title, args.author, lang, cover, indent=args.indent)
+    build_epub(
+        chapters,
+        out,
+        title,
+        args.author,
+        lang,
+        cover,
+        indent=args.indent,
+        identifier=args.identifier,
+    )
 
     extras = [f"language: {lang}"]
     if cover:

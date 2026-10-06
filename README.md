@@ -34,6 +34,8 @@ python main.py book.txt                         # same, without installing
 | `-c, --cover` | Cover image: jpg / png / gif / webp / svg |
 | `--keep-blank-lines` | Render runs of blank lines between paragraphs as scene-break separators (`* * *`) instead of dropping them |
 | `--indent EM` | Paragraph first-line indent in `em` (default: `0`, no indent; `2` for classic CJK style) |
+| `--identifier ID` | Book identifier, e.g. `urn:uuid:...` or `urn:isbn:...` (default: deterministic UUID from title + author, so re-conversions keep reading progress and annotations) |
+| `--encoding ENC` | Force input encoding, e.g. `utf-8`, `gb18030`, `big5` (default: auto-detect) |
 
 ## Notes
 
