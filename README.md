@@ -50,7 +50,7 @@ Run `txt2epub --help` for all options.
 | `-o, --output` | Output `.epub` path (default: input name with `.epub` suffix) |
 | `-t, --title` | Book title (default: file name) |
 | `-a, --author` | Author name (default: `Unknown`) |
-| `-p, --pattern` | Chapter title regex, matched per line (default: `^第.{1,25}[章节回].*$`) |
+| `-p, --pattern` | Chapter title regex, matched per line (default: `^第[0-9〇零一二三四五六七八九十百千万两]{1,8}[章节回][^。！？]{0,30}$`) |
 | `-l, --lang` | Language code, e.g. `en`, `zh`, `ja` (default: auto-detect) |
 | `-c, --cover` | Cover image: jpg / png / gif / webp / svg |
 | `--keep-blank-lines` | Render runs of blank lines between paragraphs as scene-break separators (`* * *`) instead of dropping them |
